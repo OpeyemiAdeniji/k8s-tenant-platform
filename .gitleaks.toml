@@ -1,0 +1,9 @@
+title = "project gitleaks config"
+
+[extend]
+useDefault = true
+
+# Add allowlists only for confirmed false positives, never to silence real findings.
+# [allowlist]
+# description = "Documented example values"
+# regexes = ['''EXAMPLE_NOT_A_REAL_KEY''']
