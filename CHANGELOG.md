@@ -10,3 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project structure from the repo template.
 - Problem statement with goals, non-goals, constraints, definition of done and how success is measured.
 - ADR 0001: namespace per tenant on a shared cluster.
+
+### Changed
+- `make setup` and `CONTRIBUTING.md` now use pre-commit installed with pipx, not a virtualenv.

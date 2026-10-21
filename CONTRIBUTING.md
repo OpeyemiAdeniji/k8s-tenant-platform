@@ -15,7 +15,7 @@ This project follows a trunk-based workflow with short-lived branches.
 ## Setup
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
+pipx install pre-commit
 make setup
 ```
 
