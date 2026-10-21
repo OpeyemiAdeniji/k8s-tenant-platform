@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Contract tests with valid and invalid examples, where each invalid file declares the message it must produce.
 - `contract` CI job, plus `make validate` and `make test-contract`.
 - ADR 0005: tenant contract as plain YAML with a JSON Schema.
+- ADR 0002: pull request as the self-service interface, not a web portal.
 
 ### Changed
 - `make setup` and `CONTRIBUTING.md` now use pre-commit installed with pipx, not a virtualenv.
