@@ -1,0 +1,12 @@
+# expect: does not match
+schemaVersion: 1
+name: system-group
+owner:
+  team: demo
+  email: demo@example.com
+costCentre: cc-9005
+environment: dev
+size: small
+access:
+  admins:
+    - system:masters

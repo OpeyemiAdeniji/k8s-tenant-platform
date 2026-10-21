@@ -1,0 +1,11 @@
+# expect: access.admins:
+schemaVersion: 1
+name: empty-admins
+owner:
+  team: demo
+  email: demo@example.com
+costCentre: cc-9007
+environment: dev
+size: small
+access:
+  admins: []

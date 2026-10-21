@@ -37,5 +37,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  contract:
+    name: contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+      - name: Validate tenant files
+        run: make validate
+      - name: Run contract tests
+        run: make test-contract
+
   # Add project-specific jobs here (validate, test, build) as the project grows.
   # Keep the job names stable: branch protection matches required checks by name.

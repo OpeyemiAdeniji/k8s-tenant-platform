@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup lint secrets hooks-update
+.PHONY: help setup lint secrets hooks-update validate test-contract
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -17,3 +17,9 @@ secrets: ## Scan the full git history for leaked secrets
 
 hooks-update: ## Bump pinned hook versions in .pre-commit-config.yaml
 	pre-commit autoupdate
+
+validate: ## Validate the tenant files against the contract
+	python3 scripts/validate_tenants.py tenants/*.yaml
+
+test-contract: ## Run the contract tests (valid files pass, invalid files fail)
+	bash tests/contract/run.sh

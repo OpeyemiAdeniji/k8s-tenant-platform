@@ -1,0 +1,11 @@
+# expect: is a required property
+schemaVersion: 1
+name: missing-owner-email
+owner:
+  team: demo
+costCentre: cc-9006
+environment: dev
+size: small
+access:
+  admins:
+    - demo-admins
