@@ -1,0 +1,11 @@
+schemaVersion: 1
+name: bravo
+owner:
+  team: bravo
+  email: team-bravo@example.com
+costCentre: cc-1002
+environment: dev
+size: small
+access:
+  admins:
+    - bravo-admins

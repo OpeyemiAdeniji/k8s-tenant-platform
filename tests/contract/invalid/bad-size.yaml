@@ -1,0 +1,12 @@
+# expect: is not one of
+schemaVersion: 1
+name: bad-size
+owner:
+  team: demo
+  email: demo@example.com
+costCentre: cc-9002
+environment: dev
+size: huge
+access:
+  admins:
+    - demo-admins

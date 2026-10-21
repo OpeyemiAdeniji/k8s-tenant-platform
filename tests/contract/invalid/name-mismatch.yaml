@@ -1,0 +1,12 @@
+# expect: must match the file name
+schemaVersion: 1
+name: other
+owner:
+  team: demo
+  email: demo@example.com
+costCentre: cc-9004
+environment: dev
+size: small
+access:
+  admins:
+    - demo-admins

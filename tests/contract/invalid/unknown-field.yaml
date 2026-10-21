@@ -1,0 +1,12 @@
+# expect: Additional properties are not allowed
+schemaVersion: 1
+name: unknown-field
+owner:
+  team: demo
+  email: demo@example.com
+costCentre: cc-9003
+environment: dev
+sise: small
+access:
+  admins:
+    - demo-admins

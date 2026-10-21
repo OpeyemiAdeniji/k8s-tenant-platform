@@ -1,0 +1,11 @@
+schemaVersion: 1
+name: minimal
+owner:
+  team: minimal
+  email: team-minimal@example.com
+costCentre: cc-9001
+environment: dev
+size: small
+access:
+  admins:
+    - minimal-admins
