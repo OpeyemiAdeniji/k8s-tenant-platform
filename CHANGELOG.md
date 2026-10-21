@@ -8,3 +8,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial project structure from the repo template.
+- Problem statement with goals, non-goals, constraints, definition of done and how success is measured.
+- ADR 0001: namespace per tenant on a shared cluster.
