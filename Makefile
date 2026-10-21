@@ -4,9 +4,8 @@
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
 
-setup: ## Install pre-commit and enable git hooks (inside a virtualenv)
-	@test -n "$$VIRTUAL_ENV" || (echo 'Activate the virtualenv first: python3 -m venv .venv && source .venv/bin/activate'; exit 1)
-	pip install pre-commit
+setup: ## Install the git hooks (pre-commit is installed with pipx)
+	@command -v pre-commit >/dev/null || (echo 'Install pre-commit first: pipx install pre-commit'; exit 1)
 	pre-commit install --install-hooks
 	pre-commit install --hook-type commit-msg
 
