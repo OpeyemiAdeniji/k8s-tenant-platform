@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `contract` CI job, plus `make validate` and `make test-contract`.
 - ADR 0005: tenant contract as plain YAML with a JSON Schema.
 - ADR 0002: pull request as the self-service interface, not a web portal.
+- ADR 0003: network plugin for NetworkPolicy enforcement, with a measured test of the default kind plugin.
 
 ### Changed
 - `make setup` and `CONTRIBUTING.md` now use pre-commit installed with pipx, not a virtualenv.
