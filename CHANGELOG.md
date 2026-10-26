@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-26
+
 ### Added
 - Initial project structure from the repo template.
 - Problem statement with goals, non-goals, constraints, definition of done and how success is measured.
@@ -28,7 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/install-tools.sh`, which installs pinned versions of kind, kubectl and Helm and checks each download against its checksum.
 - `isolation` CI job, which builds the cluster on a GitHub runner and runs the isolation tests.
 - Runbook for a failed isolation job, with the first real failure recorded.
+- README with the idea, a quick start, the checks and measured results, the known limits and the roadmap.
 
 ### Changed
 - `make setup` and `CONTRIBUTING.md` now use pre-commit installed with pipx, not a virtualenv.
 - The YAML hook skips Helm templates, which are not valid YAML until they are rendered.
+
+[Unreleased]: https://github.com/OpeyemiAdeniji/k8s-tenant-platform/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/OpeyemiAdeniji/k8s-tenant-platform/releases/tag/v0.1.0
