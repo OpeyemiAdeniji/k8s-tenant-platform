@@ -203,8 +203,12 @@ done
 exit_code="$(k -n "$A" get pod hog-mem -o jsonpath='{.status.containerStatuses[0].state.terminated.exitCode}' 2> /dev/null)"
 if [ "$reason" = "OOMKilled" ]; then
   pass "the memory hog was killed at its memory limit (OOMKilled, exit code $exit_code)"
+elif [ "$exit_code" = "137" ] \
+  && [ "$(k -n "$A" get pod hog-mem -o jsonpath='{.status.phase}' 2> /dev/null)" = "Failed" ] \
+  && [ "$(k -n "$A" get pod hog-mem -o jsonpath='{.status.reason}' 2> /dev/null)" != "Evicted" ]; then
+  pass "the memory hog was killed by SIGKILL (exit code 137) and not evicted; this cluster reports the reason '$reason' and not OOMKilled"
 else
-  fail "the memory hog ended with reason '${reason:-still running}' and exit code '${exit_code:-none}', expected OOMKilled"
+  fail "the memory hog ended with reason '${reason:-still running}' and exit code '${exit_code:-none}', expected OOMKilled or exit code 137 without eviction"
   echo "      state: $(k -n "$A" get pod hog-mem -o jsonpath='{.status.containerStatuses[0].state}' 2> /dev/null | head -c 400)"
   echo "      logs: $(k -n "$A" logs hog-mem 2>&1 | tail -3 | tr '\n' ' ')"
 fi
