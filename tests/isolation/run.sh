@@ -19,8 +19,9 @@ SMALL='resources: {requests: {cpu: 50m, memory: 32Mi}, limits: {cpu: 100m, memor
 SERVER_CMD='["sh","-c","echo ok > /tmp/index.html && exec httpd -f -p 8080 -h /tmp"]'
 SLEEP_CMD='["sleep","3600"]'
 failures=0
-ip_a=""
-ip_b=""
+ip_b1=""
+n1=""
+n2=""
 
 k() { kubectl --context "$CONTEXT" "$@"; }
 as_alpha() { k --as=tester --as-group=alpha-admins "$@"; }
@@ -55,10 +56,13 @@ expect_blocked() {
   fi
 }
 
-# apply_pod NAMESPACE NAME COMMAND_JSON [RESOURCES_YAML] [RESTART_POLICY]
+# apply_pod NAMESPACE NAME COMMAND_JSON [RESOURCES_YAML] [RESTART_POLICY] [NODE]
 # Pods follow the restricted Pod Security level, so the namespaces accept them.
 apply_pod() {
-  local ns="$1" name="$2" cmd="$3" resources="${4:-}" restart="${5:-Always}"
+  local ns="$1" name="$2" cmd="$3" resources="${4:-}" restart="${5:-Always}" node="${6:-}" selector=""
+  if [ -n "$node" ]; then
+    selector="nodeSelector: {kubernetes.io/hostname: $node}"
+  fi
   k -n "$ns" apply -f - <<MANIFEST
 apiVersion: v1
 kind: Pod
@@ -69,6 +73,7 @@ metadata:
     suite: isolation
 spec:
   restartPolicy: $restart
+  $selector
   terminationGracePeriodSeconds: 0
   containers:
     - name: main
@@ -86,8 +91,8 @@ spec:
 MANIFEST
 }
 
-# fetch NAMESPACE IP : the client pod of NAMESPACE requests the page of the server at IP.
-fetch() { k -n "$1" exec iso-client -- wget -qO- -T 3 "http://$2:8080"; }
+# fetch NAMESPACE CLIENT_POD IP : the client pod requests the page of the server at IP.
+fetch() { k -n "$1" exec "$2" -- wget -qO- -T 3 "http://$3:8080"; }
 
 cleanup() {
   local ns
@@ -136,32 +141,73 @@ expect_blocked "alpha admin cannot delete its limit range" "forbidden" as_alpha 
 expect_blocked "alpha admin cannot create role bindings" "forbidden" as_alpha -n "$A" create rolebinding probe --role=tenant-admin --group=other --dry-run=server
 expect_blocked "alpha admin cannot loosen the Pod Security level" "forbidden" as_alpha label namespace "$A" pod-security.kubernetes.io/enforce=privileged --overwrite --dry-run=server
 
-echo "== network isolation between tenants (pods are reached by IP, so DNS is not involved)"
-for ns in "$A" "$B"; do
-  apply_pod "$ns" iso-server "$SERVER_CMD" "$SMALL" > /dev/null
-  apply_pod "$ns" iso-client "$SLEEP_CMD" "$SMALL" > /dev/null
-done
-network_ready=1
-for ns in "$A" "$B"; do
-  k -n "$ns" wait --for=condition=Ready pod/iso-server pod/iso-client --timeout=180s > /dev/null 2>&1 || network_ready=0
-done
-if [ "$network_ready" -ne 1 ]; then
-  fail "network: the test pods did not become ready"
+echo "== network isolation between tenants: same node and across nodes (pods are reached by IP, so DNS is not involved)"
+mapfile -t workers < <(k get nodes -l '!node-role.kubernetes.io/control-plane' -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
+if [ "${#workers[@]}" -lt 2 ]; then
+  fail "network: two worker nodes are needed, found ${#workers[@]}"
 else
-  ip_a="$(k -n "$A" get pod iso-server -o jsonpath='{.status.podIP}')"
-  ip_b="$(k -n "$B" get pod iso-server -o jsonpath='{.status.podIP}')"
-  echo "      nodes: alpha server on $(k -n "$A" get pod iso-server -o jsonpath='{.spec.nodeName}'), alpha client on $(k -n "$A" get pod iso-client -o jsonpath='{.spec.nodeName}'), bravo server on $(k -n "$B" get pod iso-server -o jsonpath='{.spec.nodeName}'), bravo client on $(k -n "$B" get pod iso-client -o jsonpath='{.spec.nodeName}')"
-  expect_ok "alpha client reaches the alpha server (same tenant)" fetch "$A" "$ip_a"
-  expect_ok "bravo client reaches the bravo server (same tenant)" fetch "$B" "$ip_b"
-  expect_ok "alpha pods can resolve names (DNS is allowed)" k -n "$A" exec iso-client -- nslookup kubernetes.default.svc.cluster.local
-  expect_blocked "alpha client cannot reach the bravo server" "timed out" fetch "$A" "$ip_b"
-  expect_blocked "bravo client cannot reach the alpha server" "timed out" fetch "$B" "$ip_a"
+  n1="${workers[0]}"
+  n2="${workers[1]}"
+  echo "      node 1 is $n1, node 2 is $n2"
+  for ns in "$A" "$B"; do
+    for i in 1 2; do
+      node="${workers[$((i - 1))]}"
+      apply_pod "$ns" "iso-server-$i" "$SERVER_CMD" "$SMALL" Always "$node" > /dev/null
+      apply_pod "$ns" "iso-client-$i" "$SLEEP_CMD" "$SMALL" Always "$node" > /dev/null
+    done
+  done
+  network_ready=1
+  for ns in "$A" "$B"; do
+    k -n "$ns" wait --for=condition=Ready pod -l suite=isolation --timeout=180s > /dev/null 2>&1 || network_ready=0
+  done
+  if [ "$network_ready" -ne 1 ]; then
+    fail "network: the test pods did not become ready"
+  else
+    placed=1
+    for ns in "$A" "$B"; do
+      for i in 1 2; do
+        for role in server client; do
+          want="${workers[$((i - 1))]}"
+          got="$(k -n "$ns" get pod "iso-$role-$i" -o jsonpath='{.spec.nodeName}')"
+          if [ "$got" != "$want" ]; then
+            placed=0
+            echo "      iso-$role-$i in $ns is on '$got', expected '$want'"
+          fi
+        done
+      done
+    done
+    if [ "$placed" -eq 1 ]; then
+      pass "all eight test pods run on the intended nodes"
+    else
+      fail "network: some test pods are not on the intended nodes"
+    fi
+
+    ip_a1="$(k -n "$A" get pod iso-server-1 -o jsonpath='{.status.podIP}')"
+    ip_a2="$(k -n "$A" get pod iso-server-2 -o jsonpath='{.status.podIP}')"
+    ip_b1="$(k -n "$B" get pod iso-server-1 -o jsonpath='{.status.podIP}')"
+    ip_b2="$(k -n "$B" get pod iso-server-2 -o jsonpath='{.status.podIP}')"
+
+    expect_ok "alpha, same node: client 1 reaches server 1" fetch "$A" iso-client-1 "$ip_a1"
+    expect_ok "alpha, across nodes: client 2 reaches server 1" fetch "$A" iso-client-2 "$ip_a1"
+    expect_ok "bravo, same node: client 2 reaches server 2" fetch "$B" iso-client-2 "$ip_b2"
+    expect_ok "bravo, across nodes: client 1 reaches server 2" fetch "$B" iso-client-1 "$ip_b2"
+    expect_ok "alpha pods can resolve names (DNS is allowed)" k -n "$A" exec iso-client-1 -- nslookup kubernetes.default.svc.cluster.local
+
+    expect_blocked "alpha cannot reach bravo on node 1 (same node)" "timed out" fetch "$A" iso-client-1 "$ip_b1"
+    expect_blocked "alpha cannot reach bravo on node 2 (same node)" "timed out" fetch "$A" iso-client-2 "$ip_b2"
+    expect_blocked "alpha on node 1 cannot reach bravo on node 2 (across nodes)" "timed out" fetch "$A" iso-client-1 "$ip_b2"
+    expect_blocked "alpha on node 2 cannot reach bravo on node 1 (across nodes)" "timed out" fetch "$A" iso-client-2 "$ip_b1"
+    expect_blocked "bravo cannot reach alpha on node 1 (same node)" "timed out" fetch "$B" iso-client-1 "$ip_a1"
+    expect_blocked "bravo cannot reach alpha on node 2 (same node)" "timed out" fetch "$B" iso-client-2 "$ip_a2"
+    expect_blocked "bravo on node 1 cannot reach alpha on node 2 (across nodes)" "timed out" fetch "$B" iso-client-1 "$ip_a2"
+    expect_blocked "bravo on node 2 cannot reach alpha on node 1 (across nodes)" "timed out" fetch "$B" iso-client-2 "$ip_a1"
+  fi
 fi
 
 echo "== noisy neighbour: alpha burns resources, bravo keeps working"
 apply_pod "$A" hog-cpu '["sh","-c","for i in 1 2; do (while :; do :; done) & done; wait"]' \
-  'resources: {requests: {cpu: 100m, memory: 32Mi}, limits: {cpu: 500m, memory: 64Mi}}' > /dev/null
-apply_pod "$A" hog-mem '["sh","-c","tail /dev/zero"]' "$SMALL" Never > /dev/null
+  'resources: {requests: {cpu: 100m, memory: 32Mi}, limits: {cpu: 500m, memory: 64Mi}}' Always "$n1" > /dev/null
+apply_pod "$A" hog-mem '["sh","-c","tail /dev/zero"]' "$SMALL" Never "$n1" > /dev/null
 
 if k -n "$A" wait --for=condition=Ready pod/hog-cpu --timeout=120s > /dev/null 2>&1; then
   sleep 5
@@ -213,9 +259,9 @@ else
   echo "      logs: $(k -n "$A" logs hog-mem 2>&1 | tail -3 | tr '\n' ' ')"
 fi
 
-if [ -n "$ip_b" ]; then
-  restarts="$(k -n "$B" get pod iso-server -o jsonpath='{.status.containerStatuses[0].restartCount}')"
-  expect_ok "the bravo server still answers while alpha is hogging" fetch "$B" "$ip_b"
+if [ -n "$ip_b1" ]; then
+  restarts="$(k -n "$B" get pod iso-server-1 -o jsonpath='{.status.containerStatuses[0].restartCount}')"
+  expect_ok "the bravo server on the same node as the hogs still answers" fetch "$B" iso-client-1 "$ip_b1"
   if [ "$restarts" = "0" ]; then
     pass "the bravo server did not restart"
   else
@@ -256,4 +302,5 @@ fi
 echo "all isolation tests passed"
 echo "Limits: the nodes are containers on one machine and share its CPU and memory, so the"
 echo "noisy neighbour tests show that pod limits are enforced, not how a full node behaves."
-echo "The tests cover ingress and egress between two tenants, not every possible path."
+echo "The network checks show that traffic between two tenants is blocked, not whether the"
+echo "ingress rules or the egress rules did it, and they do not cover every possible path."
