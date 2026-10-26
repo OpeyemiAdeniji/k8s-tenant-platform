@@ -52,5 +52,23 @@ jobs:
       - name: Run contract tests
         run: make test-contract
 
+  chart:
+    name: chart
+    runs-on: ubuntu-latest
+    env:
+      HELM_VERSION: v4.3.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Helm
+        run: |
+          curl -fsSLO "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          curl -fsSLO "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum"
+          sha256sum -c "helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum"
+          tar -xzf "helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          sudo mv linux-amd64/helm /usr/local/bin/helm
+          helm version
+      - name: Lint and render the tenant chart
+        run: make chart-test
+
   # Add project-specific jobs here (validate, test, build) as the project grows.
   # Keep the job names stable: branch protection matches required checks by name.
