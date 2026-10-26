@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Local kind cluster with one control-plane node and two workers, with Calico v3.33.0 as the network plugin.
 - `make cluster-up` and `make cluster-down`, which build and remove the cluster in one command each.
 - Measurements document with the setup and the method behind each number.
+- Tenant Helm chart (`platform/charts/tenant`): namespace, quota, limit range, access rules and default-deny network policies for every tenant file.
+- `make chart-test` and the `chart` CI job, which lint and render the chart for every tenant and check that every object carries the cost label.
+- `make tenants-apply`, which renders every tenant file and applies it to the local cluster.
+- ADR 0006: Helm chart as the renderer of the tenant file.
+- ADR 0007: custom tenant admin role instead of the built-in roles.
 
 ### Changed
 - `make setup` and `CONTRIBUTING.md` now use pre-commit installed with pipx, not a virtualenv.
+- The YAML hook skips Helm templates, which are not valid YAML until they are rendered.

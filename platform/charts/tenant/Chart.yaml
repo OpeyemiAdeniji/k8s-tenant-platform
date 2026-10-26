@@ -1,0 +1,6 @@
+apiVersion: v2
+name: tenant
+description: The baseline that the platform creates for one tenant (namespace, quota, limits, access and network rules).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

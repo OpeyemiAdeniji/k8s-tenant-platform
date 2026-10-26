@@ -1,0 +1,30 @@
+# Defaults for the tenant chart.
+# The tenant file (tenants/<name>.yaml) is passed in as extra values and supplies
+# schemaVersion, name, owner, costCentre, environment, size and access.
+#
+# The size tiers are design choices, not measurements. Medium is twice small and
+# large is four times small. A quota limits what a tenant may claim, not what it uses.
+sizes:
+  small:
+    requests: {cpu: "500m", memory: 512Mi}
+    limits: {cpu: "1", memory: 1Gi}
+    pods: 10
+    services: 5
+    persistentvolumeclaims: 2
+  medium:
+    requests: {cpu: "1", memory: 1Gi}
+    limits: {cpu: "2", memory: 2Gi}
+    pods: 20
+    services: 10
+    persistentvolumeclaims: 4
+  large:
+    requests: {cpu: "2", memory: 2Gi}
+    limits: {cpu: "4", memory: 4Gi}
+    pods: 40
+    services: 20
+    persistentvolumeclaims: 8
+
+# Defaults for containers that do not set their own requests and limits.
+containerDefaults:
+  request: {cpu: 100m, memory: 128Mi}
+  limit: {cpu: 500m, memory: 256Mi}

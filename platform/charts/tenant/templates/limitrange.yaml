@@ -1,0 +1,20 @@
+{{- $tier := include "tenant.tier" . | fromYaml }}
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-limits
+  namespace: {{ include "tenant.namespace" . }}
+  labels:
+    {{- include "tenant.labels" . | nindent 4 }}
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: {{ .Values.containerDefaults.request.cpu | quote }}
+        memory: {{ .Values.containerDefaults.request.memory | quote }}
+      default:
+        cpu: {{ .Values.containerDefaults.limit.cpu | quote }}
+        memory: {{ .Values.containerDefaults.limit.memory | quote }}
+      max:
+        cpu: {{ $tier.limits.cpu | quote }}
+        memory: {{ $tier.limits.memory | quote }}

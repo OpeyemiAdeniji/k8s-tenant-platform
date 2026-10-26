@@ -12,6 +12,7 @@ Every number in this repository is measured on the setup below, and each result 
 | kind | v0.33.0 |
 | Kubernetes (node image) | kindest/node:v1.37.0 |
 | kubectl | v1.37.1 |
+| Helm | v4.3.1 (Go 1.27.2) |
 | Calico | v3.33.0, installed with the Tigera Operator and the stock custom resources |
 | Cluster | 1 control-plane node and 2 workers |
 
@@ -46,3 +47,22 @@ Method: on the running cluster, a namespace with an nginx pod and a Service, and
 | After the policy | `wget: download timed out`. |
 
 Limits: one namespace, ingress only, one run, and the client and server may have been on the same node. This does not prove egress rules, traffic between nodes or isolation between namespaces. The isolation tests cover those.
+
+## Tenant baseline on the local cluster (v0.1)
+
+Method: `helm template` for each sample tenant, applied with `kubectl apply`. Alpha produced 9 objects and bravo 8, because bravo has no viewer group. `kubectl describe resourcequota` for alpha showed the `small` tier with nothing used: 500m and 512Mi of requests, 1 CPU and 1Gi of limits, 10 pods, 5 services, 2 volume claims, and 0 node port and load balancer services.
+
+## Access checks (v0.1)
+
+Method: `kubectl auth can-i` with `--as=tester` and `--as-group=<group>`. This asks the authorizer of the API server what is allowed, and it does not perform the action. One run on Kubernetes v1.37.0.
+
+| Identity | Question | Answer |
+|---|---|---|
+| group bound to the built-in `edit` role | delete network policies | yes |
+| group bound to the built-in `admin` role | delete network policies | yes |
+| group bound to the built-in `admin` role | create role bindings | yes |
+| `alpha-admins` in `tenant-alpha` | create deployments | yes |
+| `alpha-admins` in `tenant-alpha` | delete network policies | no |
+| `alpha-admins` in `tenant-alpha` | delete resource quotas | no |
+| `alpha-admins` in `tenant-bravo` | get secrets | no |
+| `alpha-viewers` in `tenant-alpha` | get secrets | no |
