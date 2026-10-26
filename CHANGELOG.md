@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ADR 0005: tenant contract as plain YAML with a JSON Schema.
 - ADR 0002: pull request as the self-service interface, not a web portal.
 - ADR 0003: network plugin for NetworkPolicy enforcement, with a measured test of the default kind plugin.
+- Local kind cluster with one control-plane node and two workers, with Calico v3.33.0 as the network plugin.
+- `make cluster-up` and `make cluster-down`, which build and remove the cluster in one command each.
+- Measurements document with the setup and the method behind each number.
 
 ### Changed
 - `make setup` and `CONTRIBUTING.md` now use pre-commit installed with pipx, not a virtualenv.
