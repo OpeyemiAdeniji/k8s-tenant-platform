@@ -141,7 +141,7 @@ Limits: the network checks show that traffic between two tenants is blocked. The
 
 ## CI runs of the isolation job (v0.1)
 
-Method: `gh run list --workflow CI` for the whole run, and `gh pr checks` for the `isolation` job alone. There are five runs, so this file gives the range and no average.
+Method: `gh run list --workflow CI` for the whole run, and `gh pr checks` for the `isolation` job alone. There are six runs, so this file gives the range and no average.
 
 | Run | Trigger | Result | Whole run | isolation job |
 |---|---|---|---|---|
@@ -150,5 +150,6 @@ Method: `gh run list --workflow CI` for the whole run, and `gh pr checks` for th
 | 40339094821 | pull request 9, accept exit code 137 | green | 2m45s | 2m40s |
 | 40342841955 | pull request 9, runbook | green | 2m11s | 2m6s |
 | 40343518404 | merge to `main` | green | 2m17s | not read |
+| 40347437658 | pull request 10, node placement | green | not read | 2m53s |
 
-The whole run took between 2m11s and 2m45s, and the `isolation` job between 2m6s and 2m40s in the four runs where it was read. The two red runs failed at the memory check, see `docs/runbooks/isolation-job-failed.md`.
+The whole run took between 2m11s and 2m45s in the five runs where it was read, and the `isolation` job between 2m6s and 2m53s in the five runs where it was read. The two red runs failed at the memory check, see `docs/runbooks/isolation-job-failed.md`.
