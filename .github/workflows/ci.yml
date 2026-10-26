@@ -70,5 +70,30 @@ jobs:
       - name: Lint and render the tenant chart
         run: make chart-test
 
+  isolation:
+    name: isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned tools
+        run: |
+          bash scripts/install-tools.sh "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Build the cluster
+        run: make cluster-up
+      - name: Apply the tenants
+        run: make tenants-apply
+      - name: Run the isolation tests
+        run: make test-isolation
+      - name: Show the cluster state after a failure
+        if: failure()
+        run: |
+          kubectl --context kind-tenant-platform get nodes -o wide || true
+          kubectl --context kind-tenant-platform get pods -A -o wide || true
+          kubectl --context kind-tenant-platform get events -A --sort-by=.lastTimestamp | tail -50 || true
+          echo "--- kernel log (shared by all nodes, because they are containers on one host)"
+          docker exec tenant-platform-control-plane dmesg 2>&1 | grep -iE 'oom|out of memory|killed process|not permitted|denied' | tail -20 || true
+
   # Add project-specific jobs here (validate, test, build) as the project grows.
   # Keep the job names stable: branch protection matches required checks by name.

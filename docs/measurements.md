@@ -89,3 +89,29 @@ Limits:
 - The suite covers ingress and egress between two tenants by pod IP. It does not cover every possible path, for example traffic through a Service or through the host network.
 - The expected refusal texts (for example "exceeded quota") were checked on Kubernetes v1.37.0 only.
 - The suite does not run in CI yet. It needs a cluster, so it comes in a separate change.
+
+## CI isolation job on a GitHub runner (v0.1)
+
+Method: the `isolation` job installs pinned kind, kubectl and Helm with `scripts/install-tools.sh`, then runs `make cluster-up`, `make tenants-apply` and `make test-isolation`, which are the same scripts as a local run. The step durations below come from the step timestamps of one passing run (40339094821, commit cb4bf80), read with `gh run view --json jobs`. The resolution is one second.
+
+| Step | Duration |
+|---|---|
+| Set up job | 0 s |
+| Run actions/checkout@v4 | 1 s |
+| Install pinned tools | 2 s |
+| Build the cluster | 121 s |
+| Apply the tenants | 1 s |
+| Run the isolation tests | 32 s |
+| Show the cluster state after a failure | 0 s |
+| Post Run actions/checkout@v4 | 0 s |
+| Complete job | 0 s |
+
+The total time of the job as listed by `gh pr checks` in the three runs of this branch was 2m30s, 2m7s and 2m40s. Three samples show that the time varies from run to run. They are not enough for an average.
+
+Runner as read from the diagnostics of a failed run: kernel 7.0.0-1017-azure, Kubernetes v1.37.0 and containerd 2.3.4. The local machine has kernel 6.18.54.1-microsoft-standard-WSL2 with the same Kubernetes and containerd versions.
+
+Memory check line of the passing run: `pass  the memory hog was killed by SIGKILL (exit code 137) and not evicted; this cluster reports the reason 'Error' and not OOMKilled`
+
+The first two runs failed at the memory check. The details are in `docs/runbooks/isolation-job-failed.md`.
+
+Pod placement is decided by the scheduler and the test does not control it. Locally and in the first CI run all four test pods ran on one node. In the passing run the diagnostic line was: `nodes: alpha server on tenant-platform-worker2, alpha client on tenant-platform-worker2, bravo server on tenant-platform-worker2, bravo client on tenant-platform-worker`. So the network checks cover traffic between nodes only by chance, and they are not a guarantee.
