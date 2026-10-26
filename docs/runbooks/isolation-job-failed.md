@@ -40,7 +40,8 @@ Then compare with a local run of `make test-isolation`, which prints the same ch
 
 ## Known gaps
 
-- **Pod placement is left to the scheduler, so cross-node coverage is accidental.** The test does not choose nodes. On the local machine and in the first CI run, all four test pods ran on `tenant-platform-worker2`. In run 40339094821 the diagnostic line was: `nodes: alpha server on tenant-platform-worker2, alpha client on tenant-platform-worker2, bravo server on tenant-platform-worker2, bravo client on tenant-platform-worker`. So the network checks sometimes cross nodes and sometimes do not. The planned fix places the pods on named nodes and tests both cases.
+- **Pod placement was left to the scheduler, so cross-node coverage was accidental (fixed on 2026-10-26).** The test does not choose nodes. On the local machine and in the first CI run, all four test pods ran on `tenant-platform-worker2`. In run 40339094821 the diagnostic line was: `nodes: alpha server on tenant-platform-worker2, alpha client on tenant-platform-worker2, bravo server on tenant-platform-worker2, bravo client on tenant-platform-worker`. So the network checks sometimes cross nodes and sometimes do not. The fix places the test pods on named nodes with a `nodeSelector`, a check verifies the placement, and the suite tests same-node and cross-node traffic on purpose. A break test failed exactly the eight checks that must be blocked.
+- **The network checks do not separate ingress from egress.** The policies deny both directions at once, so a blocked check does not show which rule blocked it. A separate test with a pod in the `default` namespace, which has no policies, would show each direction on its own.
 
 ## Not seen yet
 

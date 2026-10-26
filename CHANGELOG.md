@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `make tenants-apply`, which renders every tenant file and applies it to the local cluster.
 - ADR 0006: Helm chart as the renderer of the tenant file.
 - ADR 0007: custom tenant admin role instead of the built-in roles.
-- Isolation test suite (`make test-isolation`) with 27 checks: secrets across tenants, platform controls, network traffic between tenants, noisy neighbour limits and quotas.
+- Isolation test suite (`make test-isolation`) with 36 checks, in which the test pods are placed on named nodes so that same-node and cross-node traffic are both covered: secrets across tenants, platform controls, network traffic between tenants, noisy neighbour limits and quotas.
 - `scripts/install-tools.sh`, which installs pinned versions of kind, kubectl and Helm and checks each download against its checksum.
 - `isolation` CI job, which builds the cluster on a GitHub runner and runs the isolation tests.
 - Runbook for a failed isolation job, with the first real failure recorded.

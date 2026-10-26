@@ -67,7 +67,9 @@ Method: `kubectl auth can-i` with `--as=tester` and `--as-group=<group>`. This a
 | `alpha-admins` in `tenant-bravo` | get secrets | no |
 | `alpha-viewers` in `tenant-alpha` | get secrets | no |
 
-## Isolation tests (v0.1)
+## Isolation tests, first version with 27 checks (v0.1)
+
+This version was superseded by the version with node placement below. It is kept because its results were measured.
 
 Method: `make test-isolation` runs 27 checks against the local cluster with the two sample tenants. They perform real actions, and every "must be blocked" check also tests the text of the refusal. Access checks use impersonation (`--as` and `--as-group`) with real requests. Checks of platform controls use server-side dry-run deletes, which run the real authorization and change nothing. Network checks reach pods by IP, so DNS is not involved. The suite removes its test objects when it ends.
 
@@ -86,9 +88,9 @@ Break test: all six network policies were deleted by hand and the suite was run 
 Limits:
 
 - The nodes are containers on one machine and share its CPU and memory. The noisy neighbour checks show that pod limits are enforced, not how the platform behaves when a node is full.
-- The suite covers ingress and egress between two tenants by pod IP. It does not cover every possible path, for example traffic through a Service or through the host network.
+- The network checks show that traffic between two tenants is blocked by pod IP. They do not show whether the ingress rules or the egress rules did it, because the policies deny both directions at once. Traffic through a Service or through the host network is not covered.
 - The expected refusal texts (for example "exceeded quota") were checked on Kubernetes v1.37.0 only.
-- The suite does not run in CI yet. It needs a cluster, so it comes in a separate change.
+- The suite runs in CI in the `isolation` job. See the section on the CI runs below.
 
 ## CI isolation job on a GitHub runner (v0.1)
 
@@ -106,7 +108,7 @@ Method: the `isolation` job installs pinned kind, kubectl and Helm with `scripts
 | Post Run actions/checkout@v4 | 0 s |
 | Complete job | 0 s |
 
-The total time of the job as listed by `gh pr checks` in the three runs of this branch was 2m30s, 2m7s and 2m40s. Three samples show that the time varies from run to run. They are not enough for an average.
+The times of every run of the job are listed in the section on the CI runs below.
 
 Runner as read from the diagnostics of a failed run: kernel 7.0.0-1017-azure, Kubernetes v1.37.0 and containerd 2.3.4. The local machine has kernel 6.18.54.1-microsoft-standard-WSL2 with the same Kubernetes and containerd versions.
 
@@ -114,4 +116,39 @@ Memory check line of the passing run: `pass  the memory hog was killed by SIGKIL
 
 The first two runs failed at the memory check. The details are in `docs/runbooks/isolation-job-failed.md`.
 
-Pod placement is decided by the scheduler and the test does not control it. Locally and in the first CI run all four test pods ran on one node. In the passing run the diagnostic line was: `nodes: alpha server on tenant-platform-worker2, alpha client on tenant-platform-worker2, bravo server on tenant-platform-worker2, bravo client on tenant-platform-worker`. So the network checks cover traffic between nodes only by chance, and they are not a guarantee.
+Pod placement is decided by the scheduler and the test does not control it. Locally and in the first CI run all four test pods ran on one node. In the passing run the diagnostic line was: `nodes: alpha server on tenant-platform-worker2, alpha client on tenant-platform-worker2, bravo server on tenant-platform-worker2, bravo client on tenant-platform-worker`. So the network checks cover traffic between nodes only by chance, and they are not a guarantee. This was fixed afterwards by placing the test pods on named nodes, see the section on node placement below.
+
+## Isolation tests with node placement (v0.1)
+
+Method: the suite places the test pods on named nodes with a `nodeSelector` on `kubernetes.io/hostname`. Node 1 is `tenant-platform-worker` and node 2 is `tenant-platform-worker2`. Each tenant gets a server and a client pod on each node, which makes eight pods. A check reads the node of every pod and fails if one is not where it should be, so a case cannot be reported as covered when the scheduler put the pod elsewhere. The two hog pods of the noisy neighbour section run on node 1, next to the bravo server that must keep answering.
+
+| Section | Checks |
+|---|---|
+| Access: secrets across tenants, and viewers | 6 |
+| Platform controls cannot be changed by a tenant | 5 |
+| Network: placement (1), same tenant on the same node and across nodes (4), DNS (1), different tenants blocked on the same node and across nodes (8) | 14 |
+| Noisy neighbour | 5 |
+| Quota, services and default limits | 6 |
+| Total | 36 |
+
+Result: one full run after the restore passed 36 of 36 (`all isolation tests passed`). An earlier run showed the whole network section passing line by line.
+
+Break test: all six network policies were deleted by hand and the suite was run again. Exactly the eight checks that must be blocked failed, four on the same node and four across nodes, each with "it succeeded, but it must be blocked". Eight of 36 failed in total, so the other 28 checks did not fail, including the placement check and the same-tenant checks. After `make tenants-apply` the suite passed again.
+
+Quota margin: in the noisy neighbour section the CPU limits in `tenant-alpha` add up to 1000m, which is the whole `limits.cpu` of the small tier (four test pods at 100m, the CPU hog at 500m and the memory hog at 100m). The suite passed, so a quota accepts a total equal to its limit. There is no margin, so one more pod in that section would be rejected.
+
+Limits: the network checks show that traffic between two tenants is blocked. They do not show whether the ingress rules or the egress rules did it, because the policies deny both directions at once.
+
+## CI runs of the isolation job (v0.1)
+
+Method: `gh run list --workflow CI` for the whole run, and `gh pr checks` for the `isolation` job alone. There are five runs, so this file gives the range and no average.
+
+| Run | Trigger | Result | Whole run | isolation job |
+|---|---|---|---|---|
+| 40332877934 | pull request 9, first push | red | 2m35s | 2m30s |
+| 40337348572 | pull request 9, extra diagnostics | red | 2m12s | 2m7s |
+| 40339094821 | pull request 9, accept exit code 137 | green | 2m45s | 2m40s |
+| 40342841955 | pull request 9, runbook | green | 2m11s | 2m6s |
+| 40343518404 | merge to `main` | green | 2m17s | not read |
+
+The whole run took between 2m11s and 2m45s, and the `isolation` job between 2m6s and 2m40s in the four runs where it was read. The two red runs failed at the memory check, see `docs/runbooks/isolation-job-failed.md`.
