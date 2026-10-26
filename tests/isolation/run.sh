@@ -150,6 +150,7 @@ if [ "$network_ready" -ne 1 ]; then
 else
   ip_a="$(k -n "$A" get pod iso-server -o jsonpath='{.status.podIP}')"
   ip_b="$(k -n "$B" get pod iso-server -o jsonpath='{.status.podIP}')"
+  echo "      nodes: alpha server on $(k -n "$A" get pod iso-server -o jsonpath='{.spec.nodeName}'), alpha client on $(k -n "$A" get pod iso-client -o jsonpath='{.spec.nodeName}'), bravo server on $(k -n "$B" get pod iso-server -o jsonpath='{.spec.nodeName}'), bravo client on $(k -n "$B" get pod iso-client -o jsonpath='{.spec.nodeName}')"
   expect_ok "alpha client reaches the alpha server (same tenant)" fetch "$A" "$ip_a"
   expect_ok "bravo client reaches the bravo server (same tenant)" fetch "$B" "$ip_b"
   expect_ok "alpha pods can resolve names (DNS is allowed)" k -n "$A" exec iso-client -- nslookup kubernetes.default.svc.cluster.local
@@ -199,10 +200,13 @@ for _ in $(seq 1 45); do
   fi
   sleep 2
 done
+exit_code="$(k -n "$A" get pod hog-mem -o jsonpath='{.status.containerStatuses[0].state.terminated.exitCode}' 2> /dev/null)"
 if [ "$reason" = "OOMKilled" ]; then
-  pass "the memory hog was killed at its memory limit (OOMKilled)"
+  pass "the memory hog was killed at its memory limit (OOMKilled, exit code $exit_code)"
 else
-  fail "the memory hog ended with reason '${reason:-still running}', expected OOMKilled"
+  fail "the memory hog ended with reason '${reason:-still running}' and exit code '${exit_code:-none}', expected OOMKilled"
+  echo "      state: $(k -n "$A" get pod hog-mem -o jsonpath='{.status.containerStatuses[0].state}' 2> /dev/null | head -c 400)"
+  echo "      logs: $(k -n "$A" logs hog-mem 2>&1 | tail -3 | tr '\n' ' ')"
 fi
 
 if [ -n "$ip_b" ]; then

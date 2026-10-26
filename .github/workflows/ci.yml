@@ -92,6 +92,8 @@ jobs:
           kubectl --context kind-tenant-platform get nodes -o wide || true
           kubectl --context kind-tenant-platform get pods -A -o wide || true
           kubectl --context kind-tenant-platform get events -A --sort-by=.lastTimestamp | tail -50 || true
+          echo "--- kernel log (shared by all nodes, because they are containers on one host)"
+          docker exec tenant-platform-control-plane dmesg 2>&1 | grep -iE 'oom|out of memory|killed process|not permitted|denied' | tail -20 || true
 
   # Add project-specific jobs here (validate, test, build) as the project grows.
   # Keep the job names stable: branch protection matches required checks by name.
