@@ -24,16 +24,13 @@ Here, a team adds one file, `tenants/<name>.yaml`, in a pull request. Continuous
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    F["tenants/NAME.yaml"] --> PR["Pull request"]
-    PR --> CI["CI checks"]
-    CI --> M["Merge to main"]
-    M --> H["helm template + kubectl apply<br/>(make tenants-apply)"]
-    H --> NS["Namespace tenant-NAME with quota,<br/>limits, access and network policies"]
-    M -. planned, v0.3 .-> G["Argo CD ApplicationSet"]
-    G -.-> NS
-```
+A tenant is created in v0.1 like this:
+
+1. A team adds `tenants/<name>.yaml` in a pull request.
+2. Continuous integration checks the file against the JSON Schema and renders the chart for it.
+3. The merge to `main` is the approval.
+4. `make tenants-apply` renders the file with `helm template` and applies it with `kubectl apply`. This step is manual in v0.1.
+5. The cluster now has a namespace `tenant-<name>` with its quota, limits, access rules and network policies.
 
 The tenant file is the only thing that a team edits. In v0.1 the merge is followed by a manual `make tenants-apply`. Argo CD, which would apply and remove tenants automatically, is planned for v0.3 and is not built yet. The cluster is a kind cluster with one control-plane node and two workers, with Calico as the network plugin ([ADR 0003](docs/adr/0003-network-plugin-calico.md)).
 
