@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Isolation test suite (`make test-isolation`) with 27 checks: secrets across tenants, platform controls, network traffic between tenants, noisy neighbour limits and quotas.
 - `scripts/install-tools.sh`, which installs pinned versions of kind, kubectl and Helm and checks each download against its checksum.
 - `isolation` CI job, which builds the cluster on a GitHub runner and runs the isolation tests.
+- Runbook for a failed isolation job, with the first real failure recorded.
 
 ### Changed
 - `make setup` and `CONTRIBUTING.md` now use pre-commit installed with pipx, not a virtualenv.
