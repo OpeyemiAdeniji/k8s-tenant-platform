@@ -66,3 +66,26 @@ Method: `kubectl auth can-i` with `--as=tester` and `--as-group=<group>`. This a
 | `alpha-admins` in `tenant-alpha` | delete resource quotas | no |
 | `alpha-admins` in `tenant-bravo` | get secrets | no |
 | `alpha-viewers` in `tenant-alpha` | get secrets | no |
+
+## Isolation tests (v0.1)
+
+Method: `make test-isolation` runs 27 checks against the local cluster with the two sample tenants. They perform real actions, and every "must be blocked" check also tests the text of the refusal. Access checks use impersonation (`--as` and `--as-group`) with real requests. Checks of platform controls use server-side dry-run deletes, which run the real authorization and change nothing. Network checks reach pods by IP, so DNS is not involved. The suite removes its test objects when it ends.
+
+| Section | Checks | Result |
+|---|---|---|
+| Access: secrets across tenants, and viewers | 6 | all passed |
+| Platform controls cannot be changed by a tenant | 5 | all passed |
+| Network between tenants, same-tenant traffic and DNS | 5 | all passed |
+| Noisy neighbour: CPU limit, memory limit, quiet tenant unaffected | 5 | all passed |
+| Quota, services and default limits | 6 | all passed |
+
+Three consecutive runs all passed. In each of them the CPU hog (limit 0.5 CPU) used 0.50 CPUs, measured as the difference in the cgroup `usage_usec` counter divided by the real elapsed time. The kernel reported 163, 161 and 165 throttled periods. The memory hog (limit 64Mi) ended with the reason `OOMKilled`. An earlier version of the script divided by a nominal 10 s and reported 0.53 CPUs, which was an error of the window, so it now uses timestamps.
+
+Break test: all six network policies were deleted by hand and the suite was run again. Exactly two checks failed, "alpha client cannot reach the bravo server" and the reverse, each with "it succeeded, but it must be blocked". The other 25 still passed, including the same-tenant traffic, so the failures were caused by the missing policies and not by a broken network. After `make tenants-apply` the suite passed again.
+
+Limits:
+
+- The nodes are containers on one machine and share its CPU and memory. The noisy neighbour checks show that pod limits are enforced, not how the platform behaves when a node is full.
+- The suite covers ingress and egress between two tenants by pod IP. It does not cover every possible path, for example traffic through a Service or through the host network.
+- The expected refusal texts (for example "exceeded quota") were checked on Kubernetes v1.37.0 only.
+- The suite does not run in CI yet. It needs a cluster, so it comes in a separate change.

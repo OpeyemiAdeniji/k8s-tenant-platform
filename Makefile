@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup lint secrets hooks-update validate test-contract chart-test cluster-up cluster-down tenants-apply
+.PHONY: help setup lint secrets hooks-update validate test-contract chart-test test-isolation cluster-up cluster-down tenants-apply
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -35,3 +35,6 @@ chart-test: ## Lint and render the tenant chart for every tenant file
 
 tenants-apply: ## Render every tenant file and apply it to the local cluster
 	bash scripts/tenants-apply.sh
+
+test-isolation: ## Run the isolation tests against the local cluster
+	bash tests/isolation/run.sh

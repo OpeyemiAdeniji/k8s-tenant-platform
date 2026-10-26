@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `make tenants-apply`, which renders every tenant file and applies it to the local cluster.
 - ADR 0006: Helm chart as the renderer of the tenant file.
 - ADR 0007: custom tenant admin role instead of the built-in roles.
+- Isolation test suite (`make test-isolation`) with 27 checks: secrets across tenants, platform controls, network traffic between tenants, noisy neighbour limits and quotas.
 
 ### Changed
 - `make setup` and `CONTRIBUTING.md` now use pre-commit installed with pipx, not a virtualenv.
