@@ -24,6 +24,7 @@ Method: `make cluster-up` prints the time that `kind create cluster` took, and t
 |---|---|---|---|
 | 1 | 40 s | 211 s | Node image already on disk. Calico images downloaded during the run. |
 | 2 | 35 s | 173 s | All images already on disk. |
+| 3 | 44 s | 204 s | Run on 2026-10-30 after the machine had been idle for four days. Whether the images were still on disk was not checked. |
 
 ## Memory cost of the cluster (v0.1)
 

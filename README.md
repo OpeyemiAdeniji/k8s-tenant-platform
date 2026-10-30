@@ -86,6 +86,24 @@ make test-isolation      # 36 checks against the running cluster
 make cluster-down        # remove the cluster
 ```
 
+## Supported platforms
+
+Tested:
+
+- Ubuntu under WSL2 on Windows 11, x86-64, with Docker Desktop.
+- The `ubuntu-latest` runner of GitHub Actions, x86-64.
+
+Needs: Docker, bash, make, curl and Python 3 (CI uses Python 3.14). The cluster used about 1.8 GiB of memory on a machine with 7.7 GiB. The minimum has not been determined.
+
+Not tested: macOS, Windows without WSL2, and ARM processors. The quick start has also not been followed from a clean copy of the repository yet.
+
+Parts that are tied to Linux on x86-64:
+
+- `scripts/install-tools.sh` downloads the `linux-amd64` binaries and uses `sha256sum`.
+- `tests/isolation/run.sh` uses `mapfile` (bash 4 or newer) and `date +%s%N` (a GNU feature). I expect both to fail with the default tools of macOS, but I have not tried it.
+
+Tracked in https://github.com/OpeyemiAdeniji/k8s-tenant-platform/issues/14.
+
 ## What is proven, and how
 
 `make test-isolation` runs 36 checks, and the same suite runs in CI.
@@ -106,7 +124,7 @@ One machine (Windows 11 with WSL2, 7.7 GiB of memory, 8 CPUs), single samples. T
 
 | What | Result |
 |---|---|
-| Cluster start, `make cluster-up` | 211 s with images still to download, and 173 s with images cached. `kind create cluster` took 40 s and 35 s of that |
+| Cluster start, `make cluster-up` | 173 s, 204 s and 211 s in three runs. `kind create cluster` took between 35 s and 44 s of that |
 | Memory cost of the cluster | about 1.8 GiB, as the difference in `free -h` before and after (896 MiB used before). The precision is about 0.1 GiB |
 | `isolation` CI job on a GitHub runner | between 2m6s and 2m53s in five pull request runs |
 
