@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `make kyverno-up`, which installs Kyverno with Helm at the chart version that is pinned in `platform/kyverno/chart-version`, and the measured memory cost of the stock install.
 - Kyverno policy exceptions, enabled in one namespace (`platform-exceptions`), that expire through a `cleanup.kyverno.io/ttl` label with an absolute date, and the one permission that the cleanup controller needs to delete them.
 - ADR 0008: CEL-based Kyverno policies instead of the deprecated `ClusterPolicy`, and exceptions that expire through a TTL label.
+- First policy, `disallow-latest-image-tag` (a CEL `ValidatingPolicy` scoped to tenant namespaces), with its offline tests, a message that names the fix and links to a runbook, and the runbook `docs/runbooks/policy-disallow-latest-tag.md`.
+- `make policy-test` and the `policy` CI job, which run the offline tests and check that the suite cannot give a false green.
+- The Kyverno CLI in `scripts/install-tools.sh` with its checksum, pinned in `platform/kyverno/app-version`, and a check in `make kyverno-up` that the chart installs that version.
+- ADR 0009: scope policies to tenant namespaces by label, and test the scope offline with a values file.
 
 ### Fixed
 - The architecture diagram in the README did not render on GitHub (an error in the label of a dotted arrow). It is removed for now and replaced by a numbered list, until a hand-drawn diagram is added. The v0.1.0 tag still contains the old diagram.

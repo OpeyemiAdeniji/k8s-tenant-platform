@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup lint secrets hooks-update validate test-contract chart-test test-isolation cluster-up cluster-down tenants-apply kyverno-up
+.PHONY: help setup lint secrets hooks-update validate test-contract chart-test test-isolation cluster-up cluster-down tenants-apply kyverno-up policy-test
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -41,3 +41,6 @@ test-isolation: ## Run the isolation tests against the local cluster
 
 kyverno-up: ## Install Kyverno into the local cluster at the pinned chart version
 	bash scripts/kyverno-install.sh
+
+policy-test: ## Test the Kyverno policies offline, and check that the tests can fail
+	bash scripts/policy-test.sh

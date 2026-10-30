@@ -189,3 +189,21 @@ Other results from the same experiments:
 - Before the grant, `kubectl auth can-i delete policyexceptions.policies.kyverno.io` for the cleanup controller answered `no`. After it, `yes`.
 
 Limits: three expiry samples, a longest TTL of three minutes, and a cluster that was running while the grant was added. The behaviour after a restart of the controller, with TTLs of days, and on a fresh install has not been tested.
+
+## Policy disallow-latest-image-tag (v0.2)
+
+Method: offline with `kyverno test` (CLI v1.19.2), and once live on the local cluster (Kyverno v1.19.2, Kubernetes v1.37.0) by applying the policy, creating pods in `tenant-alpha` and `default`, and deleting everything again. Each result is one run.
+
+| Check | Result |
+|---|---|
+| Offline, label selector without namespace labels | 7 tests passed, every row `Excluded`. Removing the `latest` check from a copy gave exit code 0 and no failing rows |
+| Offline, Namespace objects in the test resources | All 8 rows `Excluded`, so the CLI ignores them |
+| Offline, values file with the header | 7 tenant pods judged (`Ok`), 1 pod in `kube-system` `Excluded` |
+| Offline, `latest` check removed from a copy | Exactly 2 tests failed, exit code 1 |
+| Live, policy applied | Ready after 7 s |
+| Live, `busybox:latest` in `tenant-alpha` | Denied, with the fix and the runbook link in the message |
+| Live, `busybox:1.36` in `tenant-alpha` | Created |
+| Live, `busybox:latest` in `default` | Created |
+| Webhook of the policy | Failure policy `Fail`, selector with the tenant label, `kube-system` and `kyverno` excluded |
+
+Not measured: pod creation while Kyverno is down, and the memory use of Kyverno with a policy installed. The memory in this file was taken before any policy existed.

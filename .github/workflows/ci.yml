@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install pinned tools
         run: |
-          bash scripts/install-tools.sh "$HOME/.local/bin"
+          bash scripts/install-tools.sh "$HOME/.local/bin" kind kubectl helm
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Build the cluster
         run: make cluster-up
@@ -94,6 +94,18 @@ jobs:
           kubectl --context kind-tenant-platform get events -A --sort-by=.lastTimestamp | tail -50 || true
           echo "--- kernel log (shared by all nodes, because they are containers on one host)"
           docker exec tenant-platform-control-plane dmesg 2>&1 | grep -iE 'oom|out of memory|killed process|not permitted|denied' | tail -20 || true
+
+  policy:
+    name: policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the Kyverno CLI
+        run: |
+          bash scripts/install-tools.sh "$HOME/.local/bin" kyverno
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Test the policies
+        run: make policy-test
 
   # Add project-specific jobs here (validate, test, build) as the project grows.
   # Keep the job names stable: branch protection matches required checks by name.

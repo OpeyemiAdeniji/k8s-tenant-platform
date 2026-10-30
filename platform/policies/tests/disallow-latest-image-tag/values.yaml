@@ -1,0 +1,11 @@
+# Gives the test namespaces the labels that the policy selects on.
+# The header is required. The file that "kyverno create values" writes has no header, and
+# the Kyverno CLI rejects it as a deprecated schema.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Values
+metadata:
+  name: values
+namespaceSelector:
+  - name: tenant-alpha
+    labels:
+      app.kubernetes.io/managed-by: k8s-tenant-platform
