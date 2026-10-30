@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ADR 0004: Kyverno as the admission policy engine, compared with OPA Gatekeeper and the built-in ValidatingAdmissionPolicy.
 - Supported platforms section in the README, with the parts that are tied to Linux on x86-64, and an issue for macOS and ARM.
 - A third cluster start time in the measurements and in the README.
+- `make kyverno-up`, which installs Kyverno with Helm at the chart version that is pinned in `platform/kyverno/chart-version`, and the measured memory cost of the stock install.
 
 ### Fixed
 - The architecture diagram in the README did not render on GitHub (an error in the label of a dotted arrow). It is removed for now and replaced by a numbered list, until a hand-drawn diagram is added. The v0.1.0 tag still contains the old diagram.

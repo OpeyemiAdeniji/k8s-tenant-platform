@@ -154,3 +154,20 @@ Method: `gh run list --workflow CI` for the whole run, and `gh pr checks` for th
 | 40347437658 | pull request 10, node placement | green | not read | 2m53s |
 
 The whole run took between 2m11s and 2m45s in the five runs where it was read, and the `isolation` job between 2m6s and 2m53s in the five runs where it was read. The two red runs failed at the memory check, see `docs/runbooks/isolation-job-failed.md`.
+
+## Kyverno install (v0.2)
+
+Method: `make kyverno-up` runs `helm upgrade --install` with `--wait` for the pinned chart version, which is chart 3.9.2 with Kyverno v1.19.2 (`platform/kyverno/chart-version`). It uses the stock values, so nothing is tuned. The readings were taken on the running cluster with both sample tenants applied. The first set was taken before the install, and the second about six and a half minutes after it. `free -h` rounds to 0.1 GiB, so each difference has an uncertainty of about 0.1 GiB. The two readings are 12 minutes apart on a machine with other activity, so drift between them cannot be excluded. Each result is one sample.
+
+| Reading | Before Kyverno | With Kyverno |
+|---|---|---|
+| `free -h`, used | 2.6 Gi | 3.1 Gi |
+| `free -h`, available | 5.1 Gi | 4.5 Gi |
+| `docker stats --no-stream`, three nodes added up | 3.962 GiB | 4.512 GiB |
+| Pods in the cluster | 24 | 28 |
+
+The cost of Kyverno is about 0.5 GiB by `free -h` and 0.55 GiB by `docker stats`. The two sources agree this time, unlike the cluster measurement above. The chart installed four deployments with one replica each: admission, background, cleanup and reports controllers. The install notes of the chart warn that one admission replica is not a high availability setup. This is accepted for a one-machine reference.
+
+Install time: `kyverno ready: 100 s` from the script, which includes pulling images. Whether the images were already on disk was not checked.
+
+Isolation suite with Kyverno installed: 36 of 36 checks passed. No policy was defined yet, so Kyverno had nothing to evaluate. This shows that the installation does not interfere with the suite. It does not show that policies will not.

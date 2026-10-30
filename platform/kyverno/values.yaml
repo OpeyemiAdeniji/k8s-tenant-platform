@@ -1,0 +1,3 @@
+# Values for the Kyverno chart. Stock install first: nothing is changed until the
+# memory use has been measured (docs/adr/0004-kyverno-admission-policy-engine.md).
+{}
