@@ -1,3 +1,7 @@
-# Values for the Kyverno chart. Stock install first: nothing is changed until the
-# memory use has been measured (docs/adr/0004-kyverno-admission-policy-engine.md).
-{}
+# Values for the Kyverno chart. Everything else is the stock install.
+# Exceptions are enabled, and honoured only in the platform-exceptions namespace, so a
+# tenant cannot exempt itself from a policy (docs/adr/0004-kyverno-admission-policy-engine.md).
+features:
+  policyExceptions:
+    enabled: true
+    namespace: platform-exceptions

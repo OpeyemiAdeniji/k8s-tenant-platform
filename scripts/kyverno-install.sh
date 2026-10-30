@@ -25,5 +25,6 @@ helm upgrade --install kyverno kyverno/kyverno \
   --values platform/kyverno/values.yaml \
   --wait --timeout 10m
 
+kubectl --context "$CONTEXT" apply -f platform/kyverno/platform-exceptions-namespace.yaml
 echo "kyverno ready: $((SECONDS - start)) s"
 kubectl --context "$CONTEXT" -n kyverno get pods
