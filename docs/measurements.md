@@ -171,3 +171,21 @@ The cost of Kyverno is about 0.5 GiB by `free -h` and 0.55 GiB by `docker stats`
 Install time: `kyverno ready: 100 s` from the script, which includes pulling images. Whether the images were already on disk was not checked.
 
 Isolation suite with Kyverno installed: 36 of 36 checks passed. No policy was defined yet, so Kyverno had nothing to evaluate. This shows that the installation does not interfere with the suite. It does not show that policies will not.
+
+## Policy exceptions that expire (v0.2)
+
+Method: on the local cluster (Kyverno v1.19.2, chart 3.9.2) a throwaway `ValidatingPolicy` denied pods with the image tag `latest` in tenant namespaces. `PolicyException` objects (`policies.kyverno.io/v1`) in `platform-exceptions` carried a `cleanup.kyverno.io/ttl` label. The deletion times are the lines `resource has been deleted` in the log of the cleanup controller. The polling column comes from a loop that checks every 5 seconds. Each row is one sample.
+
+| Label value | Created (UTC) | Deleted according to the controller log (UTC) | Polling loop |
+|---|---|---|---|
+| `3m` | 12:51:56 | 12:54:56 | gone after 183 s |
+| `2026-10-30T125935Z` (about 2 minutes ahead) | about 12:57:35 | 12:59:35 | gone after 119 s |
+| `2026-10-30T115735Z` (about 1 hour in the past) | about 12:57:35 | 12:57:36 | gone after 1 s |
+
+Other results from the same experiments:
+
+- A condition with `time.now()` in the `matchConditions` of an exception was rejected when the exception was created: `undeclared reference to 'time'`.
+- With an active exception, a pod with `busybox:latest` was admitted. After the exception had been deleted, the same pod was denied. One sample each.
+- Before the grant, `kubectl auth can-i delete policyexceptions.policies.kyverno.io` for the cleanup controller answered `no`. After it, `yes`.
+
+Limits: three expiry samples, a longest TTL of three minutes, and a cluster that was running while the grant was added. The behaviour after a restart of the controller, with TTLs of days, and on a fresh install has not been tested.

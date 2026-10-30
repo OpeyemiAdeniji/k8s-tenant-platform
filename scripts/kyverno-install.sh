@@ -17,6 +17,7 @@ helm repo add kyverno https://kyverno.github.io/kyverno/ --force-update > /dev/n
 helm repo update kyverno > /dev/null
 
 start=$SECONDS
+kubectl --context "$CONTEXT" apply -f platform/kyverno/cleanup-clusterrole.yaml -f platform/kyverno/cleanup-clusterrolebinding.yaml
 echo "==> installing Kyverno chart $VERSION"
 helm upgrade --install kyverno kyverno/kyverno \
   --version "$VERSION" \

@@ -1,0 +1,13 @@
+# Gives the role of cleanup-clusterrole.yaml to the Kyverno cleanup controller.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kyverno-cleanup-policyexceptions
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kyverno-cleanup-policyexceptions
+subjects:
+  - kind: ServiceAccount
+    name: kyverno-cleanup-controller
+    namespace: kyverno
