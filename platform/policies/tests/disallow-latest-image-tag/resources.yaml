@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pass-version-tag
+  namespace: tenant-alpha
+spec:
+  containers:
+    - name: main
+      image: busybox:1.36
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pass-digest
+  namespace: tenant-alpha
+spec:
+  containers:
+    - name: main
+      image: busybox@sha256:0000000000000000000000000000000000000000000000000000000000000000
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pass-registry-port-with-tag
+  namespace: tenant-alpha
+spec:
+  containers:
+    - name: main
+      image: registry.example.com:5000/team/app:1.2.3
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fail-latest-tag
+  namespace: tenant-alpha
+spec:
+  containers:
+    - name: main
+      image: busybox:latest
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fail-no-tag
+  namespace: tenant-alpha
+spec:
+  containers:
+    - name: main
+      image: busybox
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fail-registry-port-without-tag
+  namespace: tenant-alpha
+spec:
+  containers:
+    - name: main
+      image: registry.example.com:5000/team/app
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fail-init-container-latest
+  namespace: tenant-alpha
+spec:
+  initContainers:
+    - name: setup
+      image: busybox:latest
+  containers:
+    - name: main
+      image: busybox:1.36
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: outside-latest
+  namespace: kube-system
+spec:
+  containers:
+    - name: main
+      image: busybox:latest
