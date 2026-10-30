@@ -17,6 +17,7 @@ helm repo add kyverno https://kyverno.github.io/kyverno/ --force-update > /dev/n
 helm repo update kyverno > /dev/null
 
 start=$SECONDS
+kubectl --context "$CONTEXT" apply -f platform/kyverno/cleanup-clusterrole.yaml -f platform/kyverno/cleanup-clusterrolebinding.yaml
 echo "==> installing Kyverno chart $VERSION"
 helm upgrade --install kyverno kyverno/kyverno \
   --version "$VERSION" \
@@ -25,5 +26,6 @@ helm upgrade --install kyverno kyverno/kyverno \
   --values platform/kyverno/values.yaml \
   --wait --timeout 10m
 
+kubectl --context "$CONTEXT" apply -f platform/kyverno/platform-exceptions-namespace.yaml
 echo "kyverno ready: $((SECONDS - start)) s"
 kubectl --context "$CONTEXT" -n kyverno get pods
