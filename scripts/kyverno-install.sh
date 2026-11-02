@@ -36,5 +36,11 @@ helm upgrade --install kyverno kyverno/kyverno \
   --wait --timeout 10m
 
 kubectl --context "$CONTEXT" apply -f platform/kyverno/platform-exceptions-namespace.yaml
+echo "==> applying the policies"
+kubectl --context "$CONTEXT" apply -f platform/policies/*.yaml
+for p in $(kubectl --context "$CONTEXT" get validatingpolicies.policies.kyverno.io -o name); do
+  kubectl --context "$CONTEXT" wait --for=jsonpath='{.status.conditionStatus.ready}'=true "$p" --timeout=120s
+done
+
 echo "kyverno ready: $((SECONDS - start)) s"
 kubectl --context "$CONTEXT" -n kyverno get pods
