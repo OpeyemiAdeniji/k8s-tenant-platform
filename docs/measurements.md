@@ -207,3 +207,41 @@ Method: offline with `kyverno test` (CLI v1.19.2), and once live on the local cl
 | Webhook of the policy | Failure policy `Fail`, selector with the tenant label, `kube-system` and `kyverno` excluded |
 
 Not measured: pod creation while Kyverno is down, and the memory use of Kyverno with a policy installed. The memory in this file was taken before any policy existed.
+
+## Live policy tests and CI jobs (v0.2)
+
+Method: one CI run of pull request 19 on a GitHub runner (`ubuntu-latest`, run 41449354076, commit bd3b535). The job times are the elapsed times of `gh pr checks 19`, and the whole run is the elapsed time of `gh run list`. The jobs run in parallel. One run, so these numbers show nothing about their spread.
+
+| Job | Time |
+|---|---|
+| chart | 8 s |
+| contract | 19 s |
+| isolation | 2 min 28 s |
+| lint | 30 s |
+| policy | 7 s |
+| policy-live | 2 min 18 s |
+| secret-scan | 10 s |
+| whole run | 2 min 33 s |
+
+`policy-live` builds a second cluster and installs Kyverno on it, so it costs runner time, and the whole run stays close to the slowest job. It is not a required check. On the local cluster `tests/policy-live/run.sh` passed 21 of 21 checks in each of the two runs that were checked on 2026-11-02, and the isolation suite passed 36 of 36 twice with the policy installed, including its UPDATE rule.
+
+## Quota of a small tenant (v0.2)
+
+Measured on 2026-11-02 in `tenant-alpha` (tier small) with the limit range of the chart. Two pods without resources took `limits.cpu` 1 of 1 (each pod got the default limit of 500m), `limits.memory` 512Mi of 1Gi and `requests.cpu` 200m of 500m, and a third pod was refused with `exceeded quota: tenant-quota, requested: limits.cpu=500m, used: limits.cpu=1, limited: limits.cpu=1`. So a small tenant fits two pods that set no resources, although the tier allows 10 pods. The default limit is a design choice and was not changed.
+
+## Unexplained Unauthorized errors of the controller-manager (v0.2)
+
+Observed on 2026-11-02, from the last 3000 lines of the controller-manager log. There were 10 lines with `Unauthorized`: 9 from `reflector.go:227` (a failed watch) at 2026-10-30 10:12, 11:16, 17:48 and 21:28, 2026-10-31 14:58, 17:51, 19:19 and 21:20, and 2026-11-02 10:35 (UTC), and one from the ReplicaSet controller at 2026-11-02 10:38:20. The two watch lines that were read in full were watches of ClusterTrustBundle. The ReplicaSet error left two Warning events (`Error creating: Unauthorized`) for a test Deployment. At 11:34 UTC the clock of the WSL machine and of the control-plane node differed by 1 s, and the API server, controller-manager, scheduler and etcd pods had 0 restarts since 2026-10-30 06:57 UTC. The cause is unknown. The Deployments worked at every other time, and the live script retries nothing.
+
+## Kyverno outage behaviour (v0.2)
+
+Method: on the local cluster (Kyverno v1.19.2, one admission controller replica), as a tenant admin (`alpha-admins`) or as the platform admin. Probes were server-side dry runs. Each result is one run, apart from the stop test, which was done twice. The reading is in `docs/adr/0011-kyverno-outage-behaviour.md`.
+
+| Event | Observed |
+|---|---|
+| Scale to zero | Five webhook configurations removed within 5 s, still gone after 30 s, all eight back after the restart. A `latest` pod and an image swap to `latest` were accepted while stopped. Kyverno was back after 26 s in one run |
+| Container crash (`crictl stop -t 0`) | Configuration stayed. The first four probes (about 8 s) refused both a pinned and a `latest` pod, then a pinned pod was admitted and a `latest` pod denied. One restart |
+| Rolling restart | 45 probes of a `latest` pod over about 100 s, all denied |
+| Tenant admin scales, patches or deletes the admission deployment or pod, or deletes the webhook configuration | 4 requests, 4 `Forbidden` |
+
+Not tested: a Helm upgrade, a node drain, two replicas, and whether Kyverno's reports show a workload that was created during a stop.

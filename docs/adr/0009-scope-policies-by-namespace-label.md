@@ -1,6 +1,6 @@
 # 0009. Scope policies to tenant namespaces by label, and test the scope offline with a values file
 
-- Status: accepted
+- Status: accepted, amended by 0011 (the reasoning about a Kyverno outage)
 - Date: 2026-10-30
 
 ## Context
