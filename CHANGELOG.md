@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `make policy-test` and the `policy` CI job, which run the offline tests and check that the suite cannot give a false green.
 - The Kyverno CLI in `scripts/install-tools.sh` with its checksum, pinned in `platform/kyverno/app-version`, and a check in `make kyverno-up` that the chart installs that version.
 - ADR 0009: scope policies to tenant namespaces by label, and test the scope offline with a values file.
+- The policy `disallow-latest-image-tag` also judges updates, but only for images that the old object did not have. A workload that already runs `latest` accepts unrelated edits, and a swap to another `latest` image is denied.
+- `make test-policy-live` (`tests/policy-live/run.sh`): 21 live checks as a tenant admin on the local cluster, and a `policy-live` CI job that is not a required check yet.
+- ADR 0010: the policy judges updates, but only for images that the old object did not have.
+- ADR 0011: what the guardrail does while Kyverno is stopped, crashes or restarts, and the chosen route (accept and document). ADR 0009 is amended.
 
 ### Fixed
 - The architecture diagram in the README did not render on GitHub (an error in the label of a dotted arrow). It is removed for now and replaced by a numbered list, until a hand-drawn diagram is added. The v0.1.0 tag still contains the old diagram.

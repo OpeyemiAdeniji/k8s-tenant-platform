@@ -29,7 +29,7 @@ An exception is a `PolicyException` in the namespace `platform-exceptions`, crea
 ## Not covered
 
 - The policy is written for pods. Kyverno generates the same rule for Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs and CronJobs. The live tests cover pods, Deployments and CronJobs.
-- If Kyverno is down, the webhook fails closed: new pods in tenant namespaces are rejected until Kyverno is back. Other namespaces are not affected, and the `kyverno` and `kube-system` namespaces are excluded, so Kyverno can always be repaired. This is not tested live.
+- While Kyverno is stopped on purpose (scaled to zero), it removes its admission webhooks, so this policy does not apply and a `latest` image is admitted. A crash of the container is different: the webhooks stay, and pod creation in tenant namespaces is refused for about 10 seconds until the container is back. A rolling restart did not open a window in one test. A tenant admin cannot stop Kyverno (four requests were refused). The `kyverno` and `kube-system` namespaces are excluded by the namespace selector of the webhook. A Helm upgrade, a node drain and two replicas are not tested. See `docs/adr/0011-kyverno-outage-behaviour.md`.
 - Ephemeral containers are not checked.
 
 ## Workloads that already run latest
