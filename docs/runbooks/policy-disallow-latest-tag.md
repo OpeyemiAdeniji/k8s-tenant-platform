@@ -28,7 +28,8 @@ An exception is a `PolicyException` in the namespace `platform-exceptions`, crea
 
 ## Not covered
 
-- The policy is written for pods. Kyverno generates the same rule for Deployments and CronJobs, and the live tests cover both. Other kinds that start containers, such as StatefulSets, DaemonSets and jobs, are caught when their pods are created.
+- The policy is written for pods. Kyverno generates the same rule for Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs and CronJobs. The live tests cover pods, Deployments and CronJobs.
+- If Kyverno is down, the webhook fails closed: new pods in tenant namespaces are rejected until Kyverno is back. Other namespaces are not affected, and the `kyverno` and `kube-system` namespaces are excluded, so Kyverno can always be repaired. This is not tested live.
 - Ephemeral containers are not checked.
 
 ## Workloads that already run latest
