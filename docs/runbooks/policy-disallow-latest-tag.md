@@ -20,7 +20,7 @@ Pin every image to a version or to a digest:
 | `busybox:latest` | `busybox@sha256:<digest>` |
 | `registry.example.com:5000/team/app` (the `:5000` is a port, not a tag) | `registry.example.com:5000/team/app:1.2.3` |
 
-If the pod is created by a Deployment, the Deployment itself is accepted, and its pods are rejected when the controller creates them. Look at the events of the ReplicaSet (`kubectl describe replicaset`) to see this message.
+A Deployment or CronJob that uses `latest` is rejected when it is created or updated, with the same message. A Deployment that already ran `latest` before the policy is accepted, and its new pods are rejected when the controller creates them. Look at the events of the ReplicaSet (`kubectl describe replicaset`) to see this message.
 
 ## If you need an exception
 
@@ -28,7 +28,7 @@ An exception is a `PolicyException` in the namespace `platform-exceptions`, crea
 
 ## Not covered
 
-- The policy checks pods only. Other kinds that start containers directly, such as jobs, are caught when their pods are created.
+- The policy is written for pods. Kyverno generates the same rule for Deployments and CronJobs, and the live tests cover both. Other kinds that start containers, such as StatefulSets, DaemonSets and jobs, are caught when their pods are created.
 - Ephemeral containers are not checked.
 
 ## Workloads that already run latest
