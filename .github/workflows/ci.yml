@@ -107,5 +107,29 @@ jobs:
       - name: Test the policies
         run: make policy-test
 
+  policy-live:
+    name: policy-live
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned tools
+        run: |
+          bash scripts/install-tools.sh "$HOME/.local/bin" kind kubectl helm
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Build the cluster
+        run: make cluster-up
+      - name: Apply the tenants
+        run: make tenants-apply
+      - name: Install Kyverno and the policies
+        run: make kyverno-up
+      - name: Run the live policy tests
+        run: make test-policy-live
+      - name: Show the cluster state after a failure
+        if: failure()
+        run: |
+          kubectl --context kind-tenant-platform get pods -A -o wide || true
+          kubectl --context kind-tenant-platform get events -A --sort-by=.lastTimestamp | tail -50 || true
+
   # Add project-specific jobs here (validate, test, build) as the project grows.
   # Keep the job names stable: branch protection matches required checks by name.
