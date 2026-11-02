@@ -20,7 +20,7 @@ POLICY="disallow-latest-image-tag"
 RUNBOOK="docs/runbooks/policy-disallow-latest-tag.md"
 EXPECTED=12
 if [ "${WITH_EXPIRY:-0}" = "1" ]; then
-  EXPECTED=15
+  EXPECTED=16
 fi
 passes=0
 failures=0
@@ -34,12 +34,13 @@ fail() { echo "FAIL  $1"; failures=$((failures + 1)); }
 
 # expect_ok NAME COMMAND... : the command must succeed.
 expect_ok() {
-  local name="$1"
+  local name="$1" out
   shift
-  if "$@" > /dev/null 2>&1; then
+  if out="$("$@" 2>&1)"; then
     pass "$name"
   else
     fail "$name (the command failed, but it must succeed)"
+    echo "      output: $(head -c 400 <<< "$out")"
   fi
 }
 
@@ -68,6 +69,7 @@ denial_missing() {
 }
 
 # Workloads follow the restricted Pod Security level, so the tenant namespaces accept them.
+RESOURCES='{requests: {cpu: 50m, memory: 32Mi}, limits: {cpu: 50m, memory: 32Mi}}'
 SECURITY='{runAsNonRoot: true, runAsUser: 1000, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}, seccompProfile: {type: RuntimeDefault}}'
 
 pod_manifest() { # NAME IMAGE NAMESPACE
@@ -85,6 +87,7 @@ spec:
     - name: main
       image: $2
       command: ["sleep", "3600"]
+      resources: $RESOURCES
       securityContext: $SECURITY
 MANIFEST
 }
@@ -114,6 +117,7 @@ spec:
         - name: main
           image: $2
           command: ["sleep", "3600"]
+          resources: $RESOURCES
           securityContext: $SECURITY
 MANIFEST
 }
@@ -212,7 +216,7 @@ if [ "${WITH_EXPIRY:-0}" = "1" ]; then
   expiry_epoch="$(date -u -d '+2 minutes' +%s)"
   label="$(date -u -d "@$expiry_epoch" +%Y-%m-%dT%H%M%SZ)"
   exception_manifest live-exception platform-exceptions "$label" exception-live > "$work/live-exception.yaml"
-  k create -f "$work/live-exception.yaml" > /dev/null
+  expect_ok "the exception exists in platform-exceptions" k create -f "$work/live-exception.yaml"
   sleep 10
   expect_ok "while the exception exists, a pod with busybox:latest is admitted" create_pod_as_alpha exception-live busybox:latest "$A"
   k -n "$A" delete pod exception-live --ignore-not-found --wait=true --timeout=60s > /dev/null 2>&1
