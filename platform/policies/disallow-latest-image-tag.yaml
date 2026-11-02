@@ -16,17 +16,23 @@ spec:
     resourceRules:
       - apiGroups: [""]
         apiVersions: ["v1"]
-        operations: ["CREATE"]
+        operations: ["CREATE", "UPDATE"]
         resources: ["pods"]
   variables:
     - name: images
       expression: >-
         object.spec.containers.map(c, c.image) +
         object.spec.?initContainers.orValue([]).map(c, c.image)
+    - name: previous
+      expression: >-
+        request.operation == 'UPDATE' ?
+        oldObject.spec.containers.map(c, c.image) +
+        oldObject.spec.?initContainers.orValue([]).map(c, c.image) : []
     - name: unpinned
       expression: >-
         variables.images.filter(i, !(i.contains('@') ||
-        (i.substring(i.lastIndexOf('/') + 1).contains(':') && !i.endsWith(':latest'))))
+        (i.substring(i.lastIndexOf('/') + 1).contains(':') && !i.endsWith(':latest')))
+        && !variables.previous.exists(p, p == i))
   validations:
     - expression: "size(variables.unpinned) == 0"
       messageExpression: >-

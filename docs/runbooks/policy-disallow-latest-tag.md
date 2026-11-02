@@ -30,3 +30,13 @@ An exception is a `PolicyException` in the namespace `platform-exceptions`, crea
 
 - The policy checks pods only. Other kinds that start containers directly, such as jobs, are caught when their pods are created.
 - Ephemeral containers are not checked.
+
+## Workloads that already run latest
+
+The policy applies to updates as well as creations, but it only blocks an image that was not in the
+object before the update. A workload that already runs `latest` keeps running and accepts unrelated
+edits, such as a label or an annotation.
+
+A new pod is a creation, so it is still denied. Scaling up, a node drain, or a restart that recreates
+a pod fails until the image is pinned. A Deployment shows this as a ReplicaFailure on its ReplicaSet.
+Fix: pin the image to a version or a digest.

@@ -18,9 +18,9 @@ CONTEXT="${KUBE_CONTEXT:-kind-tenant-platform}"
 A="tenant-alpha"
 POLICY="disallow-latest-image-tag"
 RUNBOOK="docs/runbooks/policy-disallow-latest-tag.md"
-EXPECTED=12
+EXPECTED=21
 if [ "${WITH_EXPIRY:-0}" = "1" ]; then
-  EXPECTED=16
+  EXPECTED=25
 fi
 passes=0
 failures=0
@@ -122,9 +122,41 @@ spec:
 MANIFEST
 }
 
+cronjob_manifest() { # NAME IMAGE NAMESPACE
+cat <<MANIFEST
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: $1
+  namespace: $3
+  labels:
+    suite: policy-live
+spec:
+  schedule: "0 0 1 1 *"
+  suspend: true
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          terminationGracePeriodSeconds: 0
+          containers:
+            - name: main
+              image: $2
+              command: ["sleep", "3600"]
+              resources: $RESOURCES
+              securityContext: $SECURITY
+MANIFEST
+}
+
+create_cronjob_as_alpha() { cronjob_manifest "$1" "$2" "$3" | as_alpha create -f -; }
+
 create_pod_as_alpha() { pod_manifest "$1" "$2" "$3" | as_alpha create -f -; }
 create_pod_as_admin() { pod_manifest "$1" "$2" "$3" | k create -f -; }
 create_deployment_as_alpha() { deployment_manifest "$1" "$2" "$3" | as_alpha create -f -; }
+patch_image_as_alpha() { # KIND NAME JSON_PATH
+  as_alpha -n "$A" patch "$1" "$2" --type=json -p "[{\"op\":\"replace\",\"path\":\"$3\",\"value\":\"busybox:latest\"}]"
+}
 
 exception_manifest() { # NAME NAMESPACE TTL POD
 cat <<MANIFEST
@@ -147,8 +179,10 @@ MANIFEST
 
 cleanup() {
   k -n "$A" delete deployments -l suite=policy-live --ignore-not-found --wait=false > /dev/null 2>&1
+  k -n "$A" delete cronjobs -l suite=policy-live --ignore-not-found --wait=false > /dev/null 2>&1
   k -n "$A" delete pods -l suite=policy-live --ignore-not-found --wait=false > /dev/null 2>&1
   k -n default delete pods -l suite=policy-live --ignore-not-found --wait=false > /dev/null 2>&1
+  k delete namespaces -l suite=policy-live --ignore-not-found --wait=false > /dev/null 2>&1
   k -n platform-exceptions delete policyexceptions.policies.kyverno.io live-exception --ignore-not-found > /dev/null 2>&1
   rm -rf "$work"
 }
@@ -201,6 +235,13 @@ else
 fi
 expect_ok "a deployment with busybox:1.36 is created in a tenant namespace" create_deployment_as_alpha live-deploy-pinned busybox:1.36 "$A"
 
+echo "== a tenant admin changes the image of a workload that already exists (real requests)"
+pod_manifest live-update-pod busybox:1.36 "$A" | as_alpha create -f - > /dev/null 2>&1
+deployment_manifest live-update-deploy busybox:1.36 "$A" | as_alpha create -f - > /dev/null 2>&1
+sleep 3
+expect_blocked "changing the image of a running pod to latest is denied" "Policy $POLICY failed" patch_image_as_alpha pod live-update-pod /spec/containers/0/image
+expect_blocked "changing the image of a deployment to latest is denied at the deployment itself" "Policy $POLICY failed" patch_image_as_alpha deployment live-update-deploy /spec/template/spec/containers/0/image
+
 echo "== a tenant admin cannot change policies or exceptions (real attempts, server-side dry run)"
 far="$(date -u -d '+1 hour' +%Y-%m-%dT%H%M%SZ)"
 exception_manifest probe-exception platform-exceptions "$far" nothing > "$work/exception-platform.yaml"
@@ -210,6 +251,38 @@ expect_blocked "a tenant admin cannot create an exception in its own namespace" 
 expect_blocked "a tenant admin cannot create a policy" "forbidden" as_alpha create -f "platform/policies/$POLICY.yaml" --dry-run=server
 expect_blocked "a tenant admin cannot delete the policy" "forbidden" as_alpha delete validatingpolicies.policies.kyverno.io "$POLICY" --dry-run=server
 expect_ok "the platform admin can create the same exception (dry run), so the refusals above are about the identity" k create -f "$work/exception-platform.yaml" --dry-run=server
+
+echo "== a workload that already runs latest is not blocked by unrelated updates"
+G="policy-live-old-$$"
+k create namespace "$G" > /dev/null 2>&1
+k label namespace "$G" suite=policy-live > /dev/null 2>&1
+pod_manifest live-old-pod busybox:latest "$G" | k create -f - > /dev/null 2>&1
+deployment_manifest live-old-deploy busybox:latest "$G" | k create -f - > /dev/null 2>&1
+cronjob_manifest live-old-cron busybox:latest "$G" | k create -f - > /dev/null 2>&1
+if ! k -n "$G" get pod live-old-pod > /dev/null 2>&1 || ! k -n "$G" get deployment live-old-deploy > /dev/null 2>&1 || ! k -n "$G" get cronjob live-old-cron > /dev/null 2>&1; then
+  echo "setup failed: could not create the latest workloads in the scratch namespace $G" >&2
+  exit 2
+fi
+k label namespace "$G" app.kubernetes.io/managed-by=k8s-tenant-platform > /dev/null 2>&1
+sleep 3
+expect_ok "an unrelated change (a label) to a running pod with busybox:latest is allowed" k -n "$G" label pod live-old-pod touched=yes --overwrite
+expect_blocked "swapping the image of that pod for another latest image is denied" "Policy $POLICY failed" k -n "$G" patch pod live-old-pod --type=json -p '[{"op":"replace","path":"/spec/containers/0/image","value":"alpine:latest"}]'
+expect_ok "an unrelated change (a label) to a deployment with busybox:latest is allowed" k -n "$G" label deployment live-old-deploy touched=yes --overwrite
+k -n "$G" scale deployment live-old-deploy --replicas=2 > /dev/null 2>&1
+rs_msg=""
+for _ in $(seq 1 15); do
+  rs_msg="$(k -n "$G" get rs -l app=live-old-deploy -o jsonpath='{.items[*].status.conditions[?(@.type=="ReplicaFailure")].message}' 2> /dev/null)"
+  [ -n "$rs_msg" ] && break
+  sleep 2
+done
+if grep -qF -- "Policy $POLICY failed" <<< "$rs_msg"; then
+  pass "scaling that deployment up is accepted, but its new latest pod is still denied at the pod"
+else
+  fail "scaling up created no denied pod (ReplicaFailure message: '${rs_msg:-none}')"
+fi
+expect_blocked "a cronjob with busybox:latest is denied at its own creation" "Policy $POLICY failed" create_cronjob_as_alpha live-cron-latest busybox:latest "$A"
+expect_ok "an unrelated change (a label) to a cronjob with busybox:latest is allowed" k -n "$G" label cronjob live-old-cron touched=yes --overwrite
+expect_blocked "swapping the image of that cronjob for another latest image is denied" "Policy $POLICY failed" k -n "$G" patch cronjob live-old-cron --type=json -p '[{"op":"replace","path":"/spec/jobTemplate/spec/template/spec/containers/0/image","value":"alpine:latest"}]'
 
 if [ "${WITH_EXPIRY:-0}" = "1" ]; then
   echo "== an exception expires (about 3 minutes)"
@@ -239,5 +312,5 @@ if [ "$failures" -gt 0 ]; then
   exit 1
 fi
 echo "all $passes live policy checks passed"
-echo "Limits: one tenant identity (alpha-admins) and one policy. Changing the image of an existing"
-echo "pod, and the behaviour while Kyverno is down, are not tested here."
+echo "Limits: one tenant identity (alpha-admins) and one policy. The behaviour while Kyverno is"
+echo "down, and StatefulSets, DaemonSets and Jobs, are not tested here."
